@@ -8,4 +8,13 @@ setup(name='directionFinder_backend',
       author_email = "gowans.james@gmail.com",
       license = "MIT",
       packages = ['directionFinder_backend'],
+      install_requires = [
+          'numpy',
+          'scipy',
+          'corr',
+          'katcp',
+      ],
+      scripts = [
+          'bin/run_directionFinder_backend.py',
+      ],
       zip_safe = False)
