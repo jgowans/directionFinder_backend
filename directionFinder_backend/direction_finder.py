@@ -32,7 +32,7 @@ class DirectionFinder:
 
     def find_closest_point(self, input_vector):
         closest_angle = self.manifold.keys()[0] # get a 'random' angle
-        cosest_distance = self.distance_between_vectors(input_vector, self.manifold.[closest_angle])  
+        cosest_distance = self.distance_between_vectors(input_vector, self.manifold[closest_angle])  
         for angle, manifold_vector in self.manifold.items():
             new_distance = self.distance_between_vectors(input_vector, manifold_vector) 
             if new_distane < closest_distance:
@@ -47,8 +47,8 @@ class DirectionFinder:
         )
         return np.linalg.norm(phase_differences)
 
-    def self.direction_find(self):
+    def direction_find(self):
         self.correlator.fetch_crosses()
-        input_vector = self.correlator.
+        #input_vector = self.correlator.
         # get data from correlator (sit in loop until data available)
         # iterate through manifold and find nearest point
