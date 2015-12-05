@@ -7,7 +7,7 @@ install:
     - wget https://www.python.org/ftp/python/2.7.10/Python-2.7.10.tgz
     - tar -xzf Python-2.7.10.tgz
     - ls
-    - cd Python2.7.10 && ./configure --prefix=~/virtualenv/python2.7 && make && make install
+    - cd Python-2.7.10 && ./configure --prefix=~/virtualenv/python2.7 && make && make install
     - echo python --version
     - cd -
     - ls
