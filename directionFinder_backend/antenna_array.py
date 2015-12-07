@@ -1,15 +1,13 @@
 import numpy as np
-import antenna
+from antenna import Antenna
 import itertools
 import json
 
 class AntennaArray:
     def __init__(self, antennas):
+        """ antennas is a list of Antenna type objects
+        """
         self.antennas = antennas
-        # "Circular" around a reference element
-
-#        for el_idx, el_val in enumerate(self.antennas):
-#            print("Element: {e}. x: {x}, y: {y}".format(e=el_idx, x=el_val.x, y=el_val.y))
 
     @classmethod
     def mk_from_config(cls, array_geometry_file):
@@ -17,7 +15,7 @@ class AntennaArray:
         array_geometry = json.loads(json_data)
         antennas = []
         for ant_geo in array_geometry:
-            antenna = antenna.Antenna(ant_geo['x'], ant_geo['y'])
+            antenna = Antenna(ant_geo['x'], ant_geo['y'])
             antennas.append(antenna)
         return cls(antennas)
 
@@ -26,16 +24,16 @@ class AntennaArray:
         antennas = []
         arc_length_per_element = (2*np.pi)/num_elements
         for el in range(0, num_elements):
-            antennas.append(antenna.Antenna(d,0).rotated(el * arc_length_per_element))
+            antennas.append(Antenna(d,0).rotated(el * arc_length_per_element))
         return cls(antennas)
 
     @classmethod
     def mk_circular_with_ref(cls, d, num_elements):
         antennas = []
-        antennas.append(antenna.Antenna(0, 0))
+        antennas.append(Antenna(0, 0))
         arc_length_per_element = (2*np.pi)/(num_elements-1)
         for el in range(0, num_elements-1):
-            antennas.append(antenna.Antenna(d,0).rotated(el * arc_length_per_element))
+            antennas.append(Antenna(d,0).rotated(el * arc_length_per_element))
         return cls(antennas)
 
     def phases_at_angle(self, phi):

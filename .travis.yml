@@ -1,0 +1,12 @@
+sudo: required
+dist: trusty 
+language: python
+python:
+    - "2.7"
+install:
+    - sudo apt-get update -qq
+    - sudo apt-get install -y python-dev libfreetype6-dev libpng12-dev libhdf5-serial-dev libblas-dev liblapack-dev gfortran python-tk tk-dev
+    - pip install --upgrade Cython
+    - pip install --upgrade .
+script:
+    - make test
