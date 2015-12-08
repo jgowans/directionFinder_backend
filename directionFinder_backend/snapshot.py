@@ -36,7 +36,7 @@ class Snapshot:
         """ Returns an numpy array object containing the samples from the snap block
         interpreted as per #dtype and #cvalue
         """
-        raw = self.fpga.snapshot_get(self.name, man_valid=force, man_trig=force, wait_period=12, arm=False)['data']
+        raw = self.fpga.snapshot_get(self.name, man_valid=force, man_trig=force, wait_period=12, arm=force)['data']
         self.signal = self.unpack_signal(raw)
         self.logger.debug("From snap: {n} a signal of length {l} was read".format(
             n = self.name, l = len(self.signal)))

@@ -33,7 +33,11 @@ class Correlator:
         self.auto_combinations = [(0, 0)]
         self.correlations = {}
         for comb in (self.cross_combinations + self.auto_combinations):
-            self.correlations[comb] = Correlation(comb, self.fpga)
+            self.correlations[comb] = Correlation(fpga = self.fpga,
+                                                  comb = comb,
+                                                  f_start = 0,
+                                                  f_stop = fs/2,
+                                                  logger = self.logger.getChild(str(comb)) )
             self.correlations[comb].fetch_signal(force=True)  # ensure populated with some data
         self.control_register = ControlRegister(self.fpga, self.logger.getChild('control_reg'))
 
@@ -55,10 +59,10 @@ class Correlator:
     def fetch_combinations(self, combinations):
         """ Takes an array of X correlations and returns the Correlation objects
         """
-        self.control_reg.block_trigger()
+        self.control_register.block_trigger()
         for comb in combinations:
             self.arm_combination(comb)
-        self.control_reg.allow_trigger()
+        self.control_register.allow_trigger()
         for comb in combinations:
             self.correlations[comb].fetch_signal()
 
@@ -77,11 +81,11 @@ class Correlator:
     def set_shift_schedule(self, shift_schedule):
         """ Defines the FFT bit shift schedule
         """
-        self.control_reg.set_shift_schedule(shift_schedule)
+        self.control_register.set_shift_schedule(shift_schedule)
 
     def re_sync(self):
-        self.control_reg.pulse_sync()
+        self.control_register.pulse_sync()
 
     def reset_accumulation_counter(self):
-        self.control_reg.reset_accumulation_counter()
+        self.control_register.reset_accumulation_counter()
 
