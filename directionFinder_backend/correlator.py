@@ -31,15 +31,30 @@ class Correlator:
         # only 0x0 has been implemented
         #self.auto_combinations = [(x, x) for x in range(num_channels)] # [(0, 0), (1, 1), (2, 2), (3, 3)]
         self.auto_combinations = [(0, 0)]
-        self.correlations = {}
+        self.frequency_correlations = {}
         for comb in (self.cross_combinations + self.auto_combinations):
-            self.correlations[comb] = Correlation(fpga = self.fpga,
+            self.frequency_correlations[comb] = Correlation(fpga = self.fpga,
                                                   comb = comb,
                                                   f_start = 0,
                                                   f_stop = fs/2,
                                                   logger = self.logger.getChild(str(comb)) )
-            self.correlations[comb].fetch_signal(force=True)  # ensure populated with some data
+            #self.correlations[comb].fetch_signal(force=True)  # ensure populated with some data
+        self.time_domain_snap = Snapshot(fpga = self.fpga, 
+                                         name = 'time_domain_snap', 
+                                         dtype = np.int8, 
+                                         cvalue = False,
+                                         logger = self.logger.getChild('time_domain_snap'))
         self.control_register = ControlRegister(self.fpga, self.logger.getChild('control_reg'))
+
+    def fetch_time_domain_snapshot(self, force=False):
+        # TODO: some arming perhaps here?
+        # Idea: arm it at start, then come and periodically check if it fired.
+        # if it did, fetch, do DF and re-arm
+        full_snap = self.time_domain_snap.fetch_signal(force)
+        self.time_domain_signals = []
+        for channel in self.num_channels:
+            # starting at sample channel until end in steps of num_channels
+            self.time_domain_signals.append(full_snap[channel::self.num_channels])
 
     def fetch_crosses(self):
         """ Updates the snapshot blocks for all cross correlations
@@ -64,12 +79,12 @@ class Correlator:
             self.arm_combination(comb)
         self.control_register.allow_trigger()
         for comb in combinations:
-            self.correlations[comb].fetch_signal()
+            self.frequency_correlations[comb].fetch_signal()
 
     def arm_combination(self, combination):
         """ Arms the snapshot block associated with the correlation combination
         """
-        self.correlations[combination].arm()
+        self.frequency_correlations[combination].arm()
 
     def set_accumulation_len(self, acc_len):
         """The number of vectors which should be accumulated before being snapped. 
