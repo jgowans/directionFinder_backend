@@ -5,6 +5,7 @@ functions on the data received
 
 import numpy as np
 import logging
+import time
 
 class Snapshot:
     def __init__(self, fpga, name, dtype, cvalue, logger=logging.getLogger(__name__)):
@@ -36,7 +37,13 @@ class Snapshot:
         """ Returns an numpy array object containing the samples from the snap block
         interpreted as per #dtype and #cvalue
         """
-        raw = self.fpga.snapshot_get(self.name, man_valid=force, man_trig=force, wait_period=12, arm=force)['data']
+        if self.name == 'dram':
+            # TODO: if not force, wait for snap to be triggered
+            self.fpga.snapshot_arm('snapshot', man_valid=True, man_trig=True)
+            time.sleep(0.1)
+            raw = self.fpga.read_dram(2048)
+        else:
+            raw = self.fpga.snapshot_get(self.name, man_valid=force, man_trig=force, wait_period=12, arm=force)['data']
         self.signal = self.unpack_signal(raw)
         self.logger.debug("From snap: {n} a signal of length {l} was read".format(
             n = self.name, l = len(self.signal)))

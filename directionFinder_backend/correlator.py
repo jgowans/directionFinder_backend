@@ -40,8 +40,8 @@ class Correlator:
                                                   logger = self.logger.getChild(str(comb)) )
             #self.correlations[comb].fetch_signal(force=True)  # ensure populated with some data
         self.time_domain_snap = Snapshot(fpga = self.fpga, 
-                                         name = 'time_domain_snap', 
-                                         dtype = np.int8, 
+                                         name = 'dram',
+                                         dtype = np.int8,
                                          cvalue = False,
                                          logger = self.logger.getChild('time_domain_snap'))
         self.control_register = ControlRegister(self.fpga, self.logger.getChild('control_reg'))
@@ -50,11 +50,16 @@ class Correlator:
         # TODO: some arming perhaps here?
         # Idea: arm it at start, then come and periodically check if it fired.
         # if it did, fetch, do DF and re-arm
-        full_snap = self.time_domain_snap.fetch_signal(force)
-        self.time_domain_signals = []
-        for channel in self.num_channels:
-            # starting at sample channel until end in steps of num_channels
-            self.time_domain_signals.append(full_snap[channel::self.num_channels])
+        self.time_domain_snap.fetch_signal(force)
+        sig = self.time_domain_snap.signal
+        self.time_domain_signals = [[], [], [], []]
+        for start in range(len(sig)/(4*4)):
+            for chan in range(self.num_channels):
+                self.time_domain_signals[chan].append(sig[(4*(chan+(4*start)))+0])
+                self.time_domain_signals[chan].append(sig[(4*(chan+(4*start)))+1])
+                self.time_domain_signals[chan].append(sig[(4*(chan+(4*start)))+2])
+                self.time_domain_signals[chan].append(sig[(4*(chan+(4*start)))+3])
+
 
     def fetch_crosses(self):
         """ Updates the snapshot blocks for all cross correlations
