@@ -42,19 +42,19 @@ class Correlation:
         Excludes DC bin
         """
         # add 1 because we're excluding the initial bin
-        bin_number = np.argmax(np.abs(self.signal[1:-1])) + 1
-        print("index of max: {i}".format(i = bin_number))
+        bin_number = np.argmax(np.abs(self.signal[1:])) + 1
+        print("index of max: {i} / {l}".format(i = bin_number, l = len(self.signal)))
+        #print("phase of max: {ph}".format(ph = np.angle(self.signal[bin_number])))
         bin_width = (self.f_stop - self.f_start) / len(self.signal)
-        # start of bin is bin_number * width. Centre is half a bin further
-        return bin_width * (bin_number + 0.5) 
+        return self.f_start + (bin_width * bin_number)
 
     def phase_at_freq(self, f):
         """ Note: this formula may need fixing!! Check against actual data
         """
-        fft_bin_number = (f- (self.f_start * (self.f_stop - self.f_start)) / (len(self.signal)))
-        print("bin accessed: {i}".format(i = fft_bin_number))
-        fft_bin_number = int(round(fft_bin_number))
-        fft_bin = self.signal[fft_bin_number]
-        return np.phase(fft_bin)
+        bin_width = (self.f_stop - self.f_start) / len(self.signal)
+        bin_number = int(round((f - self.f_start) / bin_width))
+        print("bin accessed: {i}".format(i = bin_number))
+        value = self.signal[bin_number]
+        return np.angle(value)
 
 
