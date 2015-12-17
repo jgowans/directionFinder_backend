@@ -41,7 +41,8 @@ class Snapshot:
             # TODO: if not force, wait for snap to be triggered
             self.fpga.snapshot_arm('snapshot', man_valid=True, man_trig=True)
             time.sleep(0.1)
-            raw = self.fpga.read_dram(2048)
+            # maximum of 2**21 bytes or 2**19 per channel
+            raw = self.fpga.read_dram(2**21)
         else:
             raw = self.fpga.snapshot_get(self.name, man_valid=force, man_trig=force, wait_period=12, arm=force)['data']
         self.signal = self.unpack_signal(raw)
