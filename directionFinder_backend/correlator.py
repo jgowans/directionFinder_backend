@@ -39,7 +39,7 @@ class Correlator:
                                                   comb = comb,
                                                   f_start = 0,
                                                   f_stop = fs/2,
-                                                  logger = self.logger.getChild(str(comb)) )
+                                                  logger = self.logger.getChild("{a}x{b}".format(a = comb[0], b = comb[1])) )
             #self.correlations[comb].fetch_signal(force=True)  # ensure populated with some data
         self.time_domain_snap = Snapshot(fpga = self.fpga, 
                                          name = 'dram',
@@ -55,12 +55,17 @@ class Correlator:
         self.time_domain_snap.fetch_signal(force)
         sig = self.time_domain_snap.signal
         self.time_domain_signals = [[], [], [], []]
+        #TODO : drastically improve this!!!
         for start in range(len(sig)/(4*4)):
             for chan in range(self.num_channels):
                 self.time_domain_signals[chan].append(sig[(4*(chan+(4*start)))+0])
                 self.time_domain_signals[chan].append(sig[(4*(chan+(4*start)))+1])
                 self.time_domain_signals[chan].append(sig[(4*(chan+(4*start)))+2])
                 self.time_domain_signals[chan].append(sig[(4*(chan+(4*start)))+3])
+        self.time_domain_signals[0] = np.array(self.time_domain_signals[0])
+        self.time_domain_signals[1] = np.array(self.time_domain_signals[1])
+        self.time_domain_signals[2] = np.array(self.time_domain_signals[2])
+        self.time_domain_signals[3] = np.array(self.time_domain_signals[3])
 
 
     def fetch_crosses(self):

@@ -13,6 +13,7 @@ setup(name='directionFinder_backend',
           'scipy',
           'corr',
           'katcp',
+          'colorlog',
       ],
       scripts = [
           'bin/run_directionFinder_backend.py',
