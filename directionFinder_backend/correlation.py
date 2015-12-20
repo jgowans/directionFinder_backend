@@ -25,6 +25,12 @@ class Correlation:
                                  logger=self.logger.getChild("{name}_1".format(name = snap_name)))
         self.f_start = np.uint64(f_start)
         self.f_stop = np.uint64(f_stop)
+        self.fetch_signal()
+        self.frequency_bins = np.linspace(
+            start = self.f_start,
+            stop = self.f_stop,
+            num = len(self.signal),
+            endpoint = False)
 
     def arm(self):
         self.snapshot0.arm()
@@ -43,18 +49,14 @@ class Correlation:
         """
         # add 1 because we're excluding the initial bin
         bin_number = np.argmax(np.abs(self.signal[1:])) + 1
-        print("index of max: {i} / {l}".format(i = bin_number, l = len(self.signal)))
-        #print("phase of max: {ph}".format(ph = np.angle(self.signal[bin_number])))
-        bin_width = (self.f_stop - self.f_start) / len(self.signal)
-        return self.f_start + (bin_width * bin_number)
+        return self.frequency_bins[bin_number]
 
     def phase_at_freq(self, f):
         """ Note: this formula may need fixing!! Check against actual data
         """
-        bin_width = (self.f_stop - self.f_start) / len(self.signal)
+        bin_width = self.frequency_bins[1] - self.frequency_bins[0]
         bin_number = int(round((f - self.f_start) / bin_width))
-        print("bin accessed: {i}".format(i = bin_number))
-        value = self.signal[bin_number]
-        return np.angle(value)
+        bin_contents = self.signal[bin_number]
+        return np.angle(bin_contents)
 
 
