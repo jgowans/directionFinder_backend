@@ -10,8 +10,9 @@ from snapshot import Snapshot
 from control_register import ControlRegister
 import itertools
 import numpy as np
-import scipy.signal
+import scipy.signal, scipy.constants
 import time
+import json
 
 
 class Correlator:
@@ -47,6 +48,8 @@ class Correlator:
                                          cvalue = False,
                                          logger = self.logger.getChild('time_domain_snap'))
         self.control_register = ControlRegister(self.fpga, self.logger.getChild('control_reg'))
+        self.time_domain_calibration_values = None
+        self.time_domain_calibration_cable_values = None
 
     def fetch_time_domain_snapshot(self, force=False):
         # TODO: some arming perhaps here?
@@ -105,7 +108,8 @@ class Correlator:
         self.do_time_domain_cross_correlation_cross_first()
 
     def do_time_domain_cross_correlation_cross_first(self):
-        self.time_domain_correlations = {}
+        self.time_domain_correlations_values = {}
+        self.time_domain_correlations_times = {}
         for (a_idx, b_idx) in self.cross_combinations:
             a = np.concatenate(
                 (np.zeros(self.time_domain_padding),
@@ -129,8 +133,13 @@ class Correlator:
                 correlation,
                 len(correlation)*self.upsample_factor,
                 t = correlation_time)
-            self.time_domain_correlations[(a_idx, b_idx)] = correlation_upped
-            self.time_domain_correlations_sample_times = correlation_time_upped
+            self.time_domain_correlations_values[(a_idx, b_idx)] = correlation_upped
+            if self.time_domain_calibration_values != None:
+                correlation_time_upped -= self.time_domain_calibration_values[(a_idx, b_idx)]
+            if self.time_domain_calibration_cable_values != None:
+                #TODO : Should it be add or subtract??
+                correlation_time_upped -= self.time_domain_calibration_cable_values[(a_idx, b_idx)]
+            self.time_domain_correlations_times[(a_idx, b_idx)] = correlation_time_upped
         # how much extra time we're appending each side
         #self.time_domain_correlation_time3 = np.linspace(-pt, pt, ((2*self.time_domain_padding)+1) * self.upsample_factor)
             # need to do something about the different length to compensate for
@@ -189,9 +198,57 @@ class Correlator:
     def reset_accumulation_counter(self):
         self.control_register.reset_accumulation_counter()
 
+    # change this to 'get overflow states'
+    # which reads and clears all overflow flags and returns a
+    # hash of whether or not the various flags have been set.
     def get_fft_overflow_state(self):
         register = self.fpga.read_uint('fft_overflow')
         if register == 0:
             return False
         else:
             return True
+
+    def apply_time_domain_calibration(self, filename):
+        self.time_domain_calibration_values = {}
+        with open(filename) as f:
+            offsets = json.load(f)
+        for a, b in self.cross_combinations:
+            comb_str = "{a}x{b}".format(a = a, b = b)
+            self.time_domain_calibration_values[(a, b)] = offsets[comb_str]
+
+    def apply_frequency_bin_calibrations(self, filename):
+        with open(filename) as f:
+            offsets = json.load(f)
+        frequencies = offsets['axis']
+        for a, b in self.cross_combinations:
+            self.frequency_correlations[(a, b)].apply_frequency_bin_calibration(
+                frequencies = frequencies,
+                phases = offsets["{a}{b}".format(a = a, b = b)])
+
+    def apply_cable_length_calibrations(self, filename):
+        """ Filename should be a json file with cable lengths
+        for each antenna and velocity factors
+        {
+          "0": {
+              "length": 0.5,
+              "velocity factor": 0.66
+          },
+        """
+        with open(filename) as f:
+            cables = json.load(f)
+        self.time_domain_calibration_cable_values = {}
+        for a, b in self.cross_combinations:
+            length_a = cables[str(a)]['length'],
+            velocity_factor_a = cables[str(a)]['velocity factor'],
+            length_b = cables[str(b)]['length'],
+            velocity_factor_b = cables[str(b)]['velocity factor'])
+            # For the frequency domain:
+            self.frequency_correlations[(a, b)].apply_cable_length_calibration(
+                length_a = length_a,
+                velocity_factor_a = velocity_factor_a,
+                length_b = length_b,
+                velocity_factor_b = velocity_factor_b)
+            # For the time domain:
+            t_a = length_a / (scipy.constants.c * velocity_factor_a)
+            t_b = length_b / (scipy.constants.c * velocity_factor_b)
+            self.time_domain_calibration_cable_values[(a, b)] = t_b - t_a
