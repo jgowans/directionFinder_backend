@@ -140,6 +140,11 @@ class Correlator:
         self.time_domain_correlations_values = {}
         self.time_domain_correlations_times = {}
         for (a_idx, b_idx) in self.cross_combinations:
+            # NOTE: The only reason this works is that the dtype of the zeros is 
+            # float64 hence 'a' and 'b' are also float64. The signals get cast 
+            # to float64.
+            # if they stayed as int8 the correlation would fail miserably.
+            # investivate time impact of converting to float64 vs int32 vs int64
             a = np.concatenate(
                 (np.zeros(self.time_domain_padding),
                  self.time_domain_signals[a_idx][0:self.subsignal_length_max],
