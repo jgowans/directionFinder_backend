@@ -31,6 +31,10 @@ class Correlator:
         self.num_channels = num_channels
         self.fs = np.float64(fs)
         self.cross_combinations = list(itertools.combinations(range(num_channels), 2))  # [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)]
+        self.control_register = ControlRegister(self.fpga, self.logger.getChild('control_reg'))
+        self.set_accumulation_len(100)
+        self.re_sync()
+        self.control_register.allow_trigger() # necessary as Correlations auto fetch signal
         # only 0x0 has been implemented
         #self.auto_combinations = [(x, x) for x in range(num_channels)] # [(0, 0), (1, 1), (2, 2), (3, 3)]
         self.auto_combinations = [(0, 0)]
@@ -41,34 +45,61 @@ class Correlator:
                                                   f_start = 0,
                                                   f_stop = fs/2,
                                                   logger = self.logger.getChild("{a}x{b}".format(a = comb[0], b = comb[1])) )
-            #self.correlations[comb].fetch_signal(force=True)  # ensure populated with some data
         self.time_domain_snap = Snapshot(fpga = self.fpga, 
-                                         name = 'dram',
+                                         name = 'dram_snapshot',
                                          dtype = np.int8,
                                          cvalue = False,
                                          logger = self.logger.getChild('time_domain_snap'))
-        self.control_register = ControlRegister(self.fpga, self.logger.getChild('control_reg'))
         self.time_domain_calibration_values = None
         self.time_domain_calibration_cable_values = None
+        self.control_register.block_trigger()
+
+    def impulse_arm(self):
+        self.control_register.pulse_impulse_arm()
+        self.time_domain_snap.arm()
+
+    def impulse_fetch(self):
+        """ Will fetch and re-arm if an impulse has occurred.
+        Will do nothing if no impulse. 
+        Return True if fetched (ie: an impulse happened) or
+        False if not
+        """
+        pre_delay = 256 * 4
+        impulse_len = self.fpga.read_uint('impulse_length')
+        if impulse_len != 0:
+            self.logger.info("Got an impulse of length: {}".format(impulse_len))
+            time.sleep(0.1)
+            if self.fpga.read_uint('impulse_length') != impulse_len:
+                self.logger.warning('Impulse has gone on for too long. Adjust setpoint?')
+            self.fetch_time_domain_snapshot()
+            self.impulse_arm()
+            return True
+        return False
+
+    def set_impulse_setpoint(self, level):
+        self.fpga.write_int('setppoint', level)
+        self.logger.info("Impulse filter length changed to: {}".format(level))
+
+    def get_current_impulse_level(self):
+        level = self.fpga.read_uint('current_impulse_level')
+        self.logger.info("Current impulse level: {}".format(level))
+        return level
+
+    def set_impulse_filter_len(self, length):
+        assert(length > 5)
+        assert(length < 1000)
+        self.fpga.write_int('impulse_filter_len', length)
+        self.logger.info("Impulse filter length set to: {}".format(length))
 
     def fetch_time_domain_snapshot(self, force=False):
-        # TODO: some arming perhaps here?
-        # Idea: arm it at start, then come and periodically check if it fired.
-        # if it did, fetch, do DF and re-arm
         self.time_domain_snap.fetch_signal(force)
         sig = self.time_domain_snap.signal
-        self.time_domain_signals = [[], [], [], []]
-        #TODO : drastically improve this!!!
-        for start in range(len(sig)/(4*4)):
-            for chan in range(self.num_channels):
-                self.time_domain_signals[chan].append(sig[(4*(chan+(4*start)))+0])
-                self.time_domain_signals[chan].append(sig[(4*(chan+(4*start)))+1])
-                self.time_domain_signals[chan].append(sig[(4*(chan+(4*start)))+2])
-                self.time_domain_signals[chan].append(sig[(4*(chan+(4*start)))+3])
-        self.time_domain_signals[0] = np.array(self.time_domain_signals[0])
-        self.time_domain_signals[1] = np.array(self.time_domain_signals[1])
-        self.time_domain_signals[2] = np.array(self.time_domain_signals[2])
-        self.time_domain_signals[3] = np.array(self.time_domain_signals[3])
+        assert((len(sig) % (4*self.num_channels)) == 0)
+        self.time_domain_signals = np.ndarray((self.num_channels, len(sig)/self.num_channels), 
+                                              dtype = self.time_domain_snap.dtype)
+        sig = sig.reshape(len(sig)/self.num_channels, self.num_channels)
+        for chan in range(self.num_channels):
+            self.time_domain_signals[chan] = sig[chan::self.num_channels].flatten()
 
 
     def fetch_crosses(self):
@@ -95,9 +126,7 @@ class Correlator:
         self.control_register.allow_trigger()
         for comb in combinations:
             self.frequency_correlations[comb].fetch_signal()
-        if self.get_fft_overflow_state() == True:
-            self.logger.critical("FFT has overflowed")
-        self.control_register.pulse_overflow_rst()
+        self.get_overflow_state()
 
     def do_time_domain_cross_correlation(self):
         # TODO: initiaise factor at initialisation from config.
@@ -201,12 +230,25 @@ class Correlator:
     # change this to 'get overflow states'
     # which reads and clears all overflow flags and returns a
     # hash of whether or not the various flags have been set.
-    def get_fft_overflow_state(self):
-        register = self.fpga.read_uint('fft_overflow')
-        if register == 0:
-            return False
-        else:
-            return True
+    def get_overflow_state(self):
+        status = self.fpga.read_uint('status')
+        overflows = {
+            'adc': False,
+            'acc': False,
+            'fft': False,
+        }
+        if (status & 1 << 0) != 0:
+            overflows['adc'] = True
+            self.logger.critical("An ADC has clipped")
+        if (status & 1 << 1) != 0:
+            overflows['acc'] = True
+            self.logger.critical("The accumulator has overflowed")
+        if (status & 1 << 2) != 0:
+            overflows['fft'] = True
+            self.logger.critical("The FFT has overflowed")
+        self.control_register.pulse_overflow_rst()
+        return overflows
+
 
     def apply_time_domain_calibration(self, filename):
         self.time_domain_calibration_values = {}
@@ -238,10 +280,10 @@ class Correlator:
             cables = json.load(f)
         self.time_domain_calibration_cable_values = {}
         for a, b in self.cross_combinations:
-            length_a = cables[str(a)]['length'],
-            velocity_factor_a = cables[str(a)]['velocity factor'],
-            length_b = cables[str(b)]['length'],
-            velocity_factor_b = cables[str(b)]['velocity factor'])
+            length_a = cables[str(a)]['length']
+            velocity_factor_a = cables[str(a)]['velocity factor']
+            length_b = cables[str(b)]['length']
+            velocity_factor_b = cables[str(b)]['velocity factor']
             # For the frequency domain:
             self.frequency_correlations[(a, b)].apply_cable_length_calibration(
                 length_a = length_a,

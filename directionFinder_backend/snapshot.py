@@ -36,15 +36,24 @@ class Snapshot:
     def fetch_signal(self, force=False):
         """ Returns an numpy array object containing the samples from the snap block
         interpreted as per #dtype and #cvalue
+        'force' will get the whole snap if DRAM or will force capture on a BRAM snap
         """
-        if self.name == 'dram':
-            # TODO: if not force, wait for snap to be triggered
-            self.fpga.snapshot_arm('snapshot', man_valid=True, man_trig=True)
-            time.sleep(0.1)
-            # maximum of 2**21 bytes or 2**19 per channel
-            raw = self.fpga.read_dram(2**21)
+        if self.name == 'dram_snapshot':
+            if force == True:
+                # maximum of 2**21 bytes or 2**19 per channel
+                self.fpga.snapshot_arm(self.name, man_valid=True, man_trig=True)
+                time.sleep(0.1)
+                raw = self.fpga.read_dram(2**21)
+            else:
+                pre_delay = 256 * 4
+                impulse_len = self.fpga.read_uint('impulse_len') * 4
+                # equal delay on either side of signal
+                to_fetch = predelay + impulse_len + pre_delay
+                # maximum of 2**21 bytes or 2**19 per channel
+                to_fetch = min(2**21, to_fetch)
+                raw = self.fpga.read_dram(to_fetch)
         else:
             raw = self.fpga.snapshot_get(self.name, man_valid=force, man_trig=force, wait_period=12, arm=force)['data']
         self.signal = self.unpack_signal(raw)
-        self.logger.debug("From snap: {n} a signal of length {l} was read".format(
+        self.logger.debug("A signal of length {l} was read".format(
             n = self.name, l = len(self.signal)))
