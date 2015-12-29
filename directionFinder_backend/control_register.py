@@ -58,24 +58,17 @@ class ControlRegister:
         self.write()
         self.logger.debug("Control register pulsed overflow reset bit")
 
-    def select_adc(self, adc):
-        """ Selects which ADC channel is connected to the time domain snap
-
-        adc -- '0I', '0Q', '1I' or '1Q'
-        """
-        channel_to_mux = {
-            '0I': 0b00,
-            '0Q': 0b01,
-            '1I': 0b10,
-            '1Q': 0b11,
-        }
-        self.value &= ~(0b11 << 4)
-        self.value |= (channel_to_mux[adc] << 4)
+    def pulse_impulse_arm(self):
+        self.value &= ~(1 << 4)
         self.write()
-        self.logger.debug("Control register selected ADC channel {c}.".format(c = adc))
+        self.value |= (1 << 4)
+        self.write()
+        self.value &= ~(1 << 4)
+        self.write()
+        self.logger.debug("Control register pulsed impulse arm bit")
 
     def set_shift_schedule(self, schedule):
-        self.value &= ~(0xFFF << 6)
-        self.value |= (schedule << 6)
+        self.value &= ~(0xFFF << 5)
+        self.value |= (schedule << 5)
         self.write()
         self.logger.debug("Setting shift schedule to {ss:#x}.".format(ss = schedule))
