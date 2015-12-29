@@ -33,6 +33,7 @@ class Correlation:
         # in other words comb1 is artificially delayed. 
         self.calibration_phase_offsets = None
         self.calibration_cable_length_offsets = None
+        self.arm()
         self.fetch_signal()
         self.frequency_bins = np.linspace(
             start = self.f_start,
@@ -76,7 +77,6 @@ class Correlation:
         self.snapshot1.arm()
 
     def apply_calibrations(self):
-        self.logger.info("Before offsets: {s}".format( s = self.signal))
         if self.calibration_phase_offsets != None:
             offsets = np.exp(1j*self.calibration_phase_offsets)
             self.signal = self.signal * np.conj(offsets)
@@ -84,7 +84,6 @@ class Correlation:
         if self.calibration_cable_length_offsets != None:
             offsets = np.exp(1j*self.calibration_cable_length_offsets)
             self.signal = self.signal * np.conj(offsets)
-        self.logger.info("after offsets: {s}".format( s = self.signal))
 
     def fetch_signal(self):
         self.snapshot0.fetch_signal()
