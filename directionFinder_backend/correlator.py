@@ -304,4 +304,7 @@ class Correlator:
             # For the time domain:
             t_a = length_a / (scipy.constants.c * velocity_factor_a)
             t_b = length_b / (scipy.constants.c * velocity_factor_b)
+            # this is how much a is delayed from b by as a result of the cable.
+            # a delayed from b by a positive amount will mean that the correlation
+            # peak will be positive. Subtract this to compensate.
             self.time_domain_calibration_cable_values[(a, b)] = t_a - t_b

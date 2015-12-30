@@ -66,9 +66,8 @@ class Correlation:
         t_b = length_b / (scipy.constants.c * velocity_factor_b)
         # for each frequency bin, calculate corresponding 
         for idx, f in enumerate(self.frequency_bins):
-            # this will produce a positive number if Bs length is longer than As
-            # a positive phase means that A is ahead of B. Which is what would happen. 
-            phase = 2*np.pi * (t_b - t_a) * f
+            # this will produce a positive number if As length is longer than Bs
+            phase = 2*np.pi * (t_a - t_b) * f
             self.calibration_cable_length_offsets[idx] = phase
         self.logger.info("Applied calibration factors base on cable length")
 
@@ -83,7 +82,7 @@ class Correlation:
             self.logger.warn("Applied: {offsets}".format(offsets = offsets))
         if self.calibration_cable_length_offsets != None:
             offsets = np.exp(1j*self.calibration_cable_length_offsets)
-            self.signal = self.signal * np.conj(offsets)
+            self.signal = self.signal * offsets
 
     def fetch_signal(self):
         self.snapshot0.fetch_signal()
