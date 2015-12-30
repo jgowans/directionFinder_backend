@@ -11,6 +11,7 @@ import time
 import timeit
 import json
 import datetime
+from colorlog import ColoredFormatter
 
 def test_cross_first_vs_resample_first():
     c.upsample_factor = 100
@@ -79,26 +80,26 @@ def plot_interpolated_vs_non_interpolated():
     ax.legend()
     plt.show()
 
-def do_calibration(c):
-    c.upsample_factor = 100
+def do_calibration(c, write = False):
+    c.upsample_factor = 1000
     c.subsignal_length_max = 2**19
-    c.time_domain_padding = 100
-    c.do_time_domain_cross_correlation_cross_first()
+    c.time_domain_padding = 1000
+    c.do_time_domain_cross_correlation()
+    logger.info(c.time_domain_cross_correlations_peaks)
+    logger.info("Step: {}".format(c.time_domain_correlations_times[(0,1)][1] - c.time_domain_correlations_times[(0,1)][0]))
     offsets = {}
     for baseline, correlation in c.time_domain_correlations_values.items():
-        argmax = np.argmax(correlation)
-        offset = c.time_domain_correlations_times[baseline][argmax]
-        # I'd much prefer to use a tuple as key, but JSON doens't support it.
         baseline_str = "{a}x{b}".format(a = baseline[0], b = baseline[1])
-        offsets[baseline_str] = offset
+        offsets[baseline_str] = c.time_domain_cross_correlations_peaks[baseline]
     offsets["metadata"] = {}
     offsets["metadata"]["created"] = datetime.datetime.utcnow().isoformat("T")
     offsets_json = json.dumps(offsets, indent=2)
-    with open('time_domain_calibration.json', 'w') as f:
-        f.write(offsets_json)
+    if write == True:
+        with open('time_domain_calibration.json', 'w') as f:
+            f.write(offsets_json)
 
 
-def plot_calibration(c):
+def plot_calibration(c, insert = True):
     fig = plt.figure()
     ax = plt.gca()
     for baseline, correlation in c.time_domain_correlations_values.items():
@@ -114,24 +115,29 @@ def plot_calibration(c):
         -200,
         200,
         2))
-    axins = zoomed_inset_axes(ax, 9, loc=1)
-    for baseline, correlation in c.time_domain_correlations_values.items():
-        correlation_max_val = correlation[np.argmax(correlation)]
-        correlation_max_time = c.time_domain_correlations_times[baseline][np.argmax(correlation)]
-        lines = axins.plot(
-            c.time_domain_correlations_times[baseline] * 1e9,
-            correlation / correlation_max_val,
-            label = baseline,
-            linewidth=2)
-        #axins.plot([correlation_max_time, correlation_max_time], [0, correlation_max_val], color = lines[0].get_color())
-    axins.set_xlim(-0.4, 0.4)
-    axins.set_ylim(0.96, 1.03)
-    axins.xaxis.set_ticks(np.arange(-0.4, 0.45, 0.2))
+    if insert == True:
+        #axins = zoomed_inset_axes(ax, 5, loc=1)
+        axins = zoomed_inset_axes(ax, 9, loc=1)
+        for baseline, correlation in c.time_domain_correlations_values.items():
+            correlation_max_val = correlation[np.argmax(correlation)]
+            correlation_max_time = c.time_domain_correlations_times[baseline][np.argmax(correlation)]
+            lines = axins.plot(
+                c.time_domain_correlations_times[baseline] * 1e9,
+                correlation / correlation_max_val,
+                label = baseline,
+                linewidth=2)
+            #axins.plot([correlation_max_time, correlation_max_time], [0, correlation_max_val], color = lines[0].get_color())
+        #axins.set_xlim(-0.4, 2.9)
+        axins.set_xlim(-0.4, 0.4)
+        #axins.set_ylim(0.90, 1.04)
+        axins.set_ylim(0.96, 1.03)
+        #axins.xaxis.set_ticks(np.arange(-0.4, 2.9, 0.4))
+        axins.xaxis.set_ticks(np.arange(-0.4, 0.4, 0.2))
+        mark_inset(ax, axins, loc1=2, loc2=3, fc='none', ec='0.5')
 
     plt.xticks(visible=True)
     plt.yticks(visible=False)
-    mark_inset(ax, axins, loc1=2, loc2=3, fc='none', ec='0.5')
-    ax.set_title("Time domain cross correlations with broad band noise\n arriving through full RF chain BEFORE calibration")
+    ax.set_title("Time domain cross correlations with broad band noise\n arriving through full RF chain AFTER calibration")
     ax.set_xlabel("Time delay (ns)")
     ax.set_ylabel("Cross correlation value (normalised)")
     ax.legend(loc=2)
@@ -139,12 +145,17 @@ def plot_calibration(c):
     plt.show()
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
-    c = Correlator()
-    logging.info("Created a Correlator")
+    logger = logging.getLogger('main')
+    handler = logging.StreamHandler()
+    colored_formatter = ColoredFormatter("%(log_color)s%(asctime)s%(levelname)s:%(name)s:%(message)s")
+    handler.setFormatter(colored_formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
+    c = Correlator(logger = logger.getChild('correlator'))
+    c.apply_time_domain_calibration("./time_domain_calibration.json")
+    c.apply_cable_length_calibrations('../config/cable_length_calibration.json')
     c.fetch_time_domain_snapshot(force=True)
-    #c.apply_time_domain_calibration("./time_domain_calibration.json")
-    do_calibration(c)
-    plot_calibration(c)
+    do_calibration(c, write = False)
+    plot_calibration(c, insert = True)
 
 

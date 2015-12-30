@@ -50,6 +50,9 @@ class Correlator:
                                          dtype = np.int8,
                                          cvalue = False,
                                          logger = self.logger.getChild('time_domain_snap'))
+        self.upsample_factor = 100
+        self.subsignal_length_max = 2**17
+        self.time_domain_padding = 100
         self.time_domain_calibration_values = None
         self.time_domain_calibration_cable_values = None
         self.control_register.block_trigger()
@@ -82,7 +85,7 @@ class Correlator:
 
     def get_current_impulse_level(self):
         level = self.fpga.read_uint('current_impulse_level')
-        self.logger.info("Current impulse level: {}".format(level))
+        self.logger.debug("Current impulse level: {}".format(level))
         return level
 
     def set_impulse_filter_len(self, length):
@@ -94,7 +97,9 @@ class Correlator:
     def fetch_time_domain_snapshot(self, force=False):
         self.time_domain_snap.fetch_signal(force)
         sig = self.time_domain_snap.signal
-        assert((len(sig) % (4*self.num_channels)) == 0)
+        # shorten to fit exactly 
+        new_length = (4 * self.num_channels) * np.floor(len(sig) / (4 * self.num_channels))
+        sig = sig[0:new_length]
         self.time_domain_signals = np.ndarray((self.num_channels, len(sig)/self.num_channels), 
                                               dtype = self.time_domain_snap.dtype)
         sig = sig.reshape(len(sig)/self.num_channels, self.num_channels)
@@ -131,12 +136,13 @@ class Correlator:
     def do_time_domain_cross_correlation(self):
         # TODO: initiaise factor at initialisation from config.
         # TODO: min(length max, actual) should be used. Init from config.
-        self.upsample_factor = 100
-        self.subsignal_length_max = 2**17
-        self.time_domain_padding = 10
-        self.do_time_domain_cross_correlation_cross_first()
+        self.do_time_domain_cross_correlations_cross_first()
+        self.time_domain_cross_correlations_peaks = {}
+        for baseline in self.cross_combinations:
+            self.time_domain_cross_correlations_peaks[baseline] = \
+                self.time_domain_correlations_times[baseline][np.argmax(self.time_domain_correlations_values[baseline])]
 
-    def do_time_domain_cross_correlation_cross_first(self):
+    def do_time_domain_cross_correlations_cross_first(self):
         self.time_domain_correlations_values = {}
         self.time_domain_correlations_times = {}
         for (a_idx, b_idx) in self.cross_combinations:
@@ -298,4 +304,4 @@ class Correlator:
             # For the time domain:
             t_a = length_a / (scipy.constants.c * velocity_factor_a)
             t_b = length_b / (scipy.constants.c * velocity_factor_b)
-            self.time_domain_calibration_cable_values[(a, b)] = t_b - t_a
+            self.time_domain_calibration_cable_values[(a, b)] = t_a - t_b

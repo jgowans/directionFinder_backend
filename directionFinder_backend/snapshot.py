@@ -45,10 +45,12 @@ class Snapshot:
                 time.sleep(0.1)
                 raw = self.fpga.read_dram(2**21)
             else:
+                # four samples per FPGA clock cycle
                 pre_delay = 256 * 4
-                impulse_len = self.fpga.read_uint('impulse_len') * 4
+                impulse_len = self.fpga.read_uint('impulse_length') * 4
                 # equal delay on either side of signal
-                to_fetch = predelay + impulse_len + pre_delay
+                to_fetch = pre_delay + impulse_len + pre_delay
+                to_fetch *= 4   # 4 simultaneous inputs
                 # maximum of 2**21 bytes or 2**19 per channel
                 to_fetch = min(2**21, to_fetch)
                 raw = self.fpga.read_dram(to_fetch)
