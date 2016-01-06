@@ -9,7 +9,7 @@ import itertools
 from directionFinder_backend.signal_generator_correlation import SignalGeneratorCorrelation
 
 class SignalGenerator:
-    def __init__(self, num_channels=4, tone_freq=0.2, snr=0.1,
+    def __init__(self, num_channels=4, tone_freq=0.2345, snr=0.1,
                  phase_shifts=np.zeros(4), amplitude_scales=np.ones(4),
                  adc_bits=8, samples=2048,
                  fft_bits = 18,
@@ -80,7 +80,6 @@ class SignalGenerator:
             np.zeros(pre_delay)
         ))
         impulse.clip(-128, 127)
-        impulse = impulse.astype(np.int8)
         self.time_domain_signals = np.ndarray((self.num_channels, 
                                                len(impulse)),
                                                dtype = np.int8)
@@ -89,9 +88,9 @@ class SignalGenerator:
                                      scale = self.noise_stddev * 127,
                                      size = len(impulse))
             noise = noise.clip(-128, 127)
-            noise = noise.astype(np.int8)
             self.time_domain_signals[chan] = noise
             self.time_domain_signals[chan] += impulse
+            self.time_domain_signals[chan].round()
 
 
 

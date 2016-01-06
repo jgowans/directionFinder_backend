@@ -18,13 +18,13 @@ def run_single_sim(siggen):
         if integration_num % 1000 == 0:
             logger.info(integration_num)
         siggen.fetch_crosses()
-        vacc += siggen.frequency_correlations[(0,1)].bin_at_freq(0.2)
+        vacc += siggen.frequency_correlations[(0,1)].bin_at_freq(FREQUENCY)
         accumulated_phase[integration_num] = np.angle(vacc)
     return accumulated_phase
 
 if __name__ == '__main__':
-    INTEGRATIONS = 40000
-    FREQUENCY = 234e6
+    INTEGRATIONS = 400000
+    FREQUENCY = 0.2345
 
     # setup root logger. Shouldn't be used much but will catch unexpected messages
     colored_formatter = ColoredFormatter("%(log_color)s%(asctime)s:%(levelname)s:%(name)s:%(message)s")
@@ -49,7 +49,11 @@ if __name__ == '__main__':
     logger.info("Logger info")
     logger.warn("Logger warning")
 
-    siggen = SignalGenerator(num_channels = 2, snr = 0.1, phase_shifts=np.zeros(2), amplitude_scales=np.ones(2))
+    siggen = SignalGenerator(tone_freq = FREQUENCY, 
+                             num_channels = 2, 
+                             snr = 0.01, 
+                             phase_shifts=np.array((0, 1.234)),
+                             amplitude_scales=np.ones(2))
 
     for _ in range(1):
         phases = run_single_sim(siggen)
