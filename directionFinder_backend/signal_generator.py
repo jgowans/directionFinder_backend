@@ -6,9 +6,10 @@ at each
 import numpy as np
 import logging
 import itertools
+from directionFinder_backend.signal_generator_correlation import SignalGeneratorCorrelation
 
 class SignalGenerator:
-    def __init__(self, num_channels=4, tone_freq=0.2, snr=0.1,
+    def __init__(self, num_channels=4, tone_freq=0.2345, snr=0.1,
                  phase_shifts=np.zeros(4), amplitude_scales=np.ones(4),
                  adc_bits=8, samples=2048,
                  fft_bits = 18,
@@ -48,13 +49,24 @@ class SignalGenerator:
         self.cross_combinations = list(itertools.combinations(range(num_channels), 2))  # [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)]
         self.auto_combinations = [(0, 0)]
         self.frequency_correlations = {}
+        for comb in self.cross_combinations:
+            self.frequency_correlations[comb] = SignalGeneratorCorrelation(
+                comb,
+                0,
+                0.5,
+                self.logger.getChild("{a}x{b}".format(a = comb[0], b = comb[1])))
+
+    def fetch_crosses(self):
+        spectrums = self.generate_quantised_spectrums()
+        for a, b in self.cross_combinations:
+            cross = spectrums[a] * np.conj(spectrums[b])
+            self.frequency_correlations[(a, b)].update(cross)
 
     def set_impulse_len(self, length):
         self.impulse_length = length
 
     def set_impulse_snr(self, snr):
         self.impulse_snr = snr
-
 
     def impulse_arm(self):
         pass
@@ -68,7 +80,6 @@ class SignalGenerator:
             np.zeros(pre_delay)
         ))
         impulse.clip(-128, 127)
-        impulse = impulse.astype(np.int8)
         self.time_domain_signals = np.ndarray((self.num_channels, 
                                                len(impulse)),
                                                dtype = np.int8)
@@ -77,9 +88,9 @@ class SignalGenerator:
                                      scale = self.noise_stddev * 127,
                                      size = len(impulse))
             noise = noise.clip(-128, 127)
-            noise = noise.astype(np.int8)
             self.time_domain_signals[chan] = noise
             self.time_domain_signals[chan] += impulse
+            self.time_domain_signals[chan].round()
 
 
 
@@ -113,7 +124,7 @@ class SignalGenerator:
         - clip
         - scale back down to be [-1 ; +1]
         """
-        scale_factor = float(1 << (self.bits-1)) # -1 because positive and negative half
+        scale_factor = float(1 << (self.adc_bits-1)) # -1 because positive and negative half
         clip_min = -scale_factor
         clip_max = scale_factor
         signal *= scale_factor
@@ -123,9 +134,9 @@ class SignalGenerator:
         return signal
 
     def generate_quantised(self):
-        signal = self.generate()
-        signal = self.quantise(signal)
-        return signal
+        signals = self.generate()
+        signals = self.quantise(signals)
+        return signals
 
     def quantise_spectrum(self, signal):
         # explanation:
@@ -139,11 +150,12 @@ class SignalGenerator:
         signal *= upscale_factor
         signal = signal.round()
         signal /= upscale_factor
-        signal = signal.clip(-1, 1)
+        # would like to clip here, but clipping complex will screw with zero the imaginary part if real is out of range
+        #signal = signal.clip(-1, 1)
         return signal
 
-    def generate_quantised_spectrum(self):
-        signal = self.generate_quantised()
-        spectrum = np.fft.rfft(signal)
-        spectrum = self.quantise_spectrum(spectrum)
-        return spectrum
+    def generate_quantised_spectrums(self):
+        signals = self.generate_quantised()
+        spectrums = np.fft.rfft(signals)
+        #spectrums = self.quantise_spectrum(spectrums)
+        return spectrums
