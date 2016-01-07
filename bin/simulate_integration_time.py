@@ -12,7 +12,7 @@ def run_single_sim(siggen):
     accumulated_phase = np.ndarray((INTEGRATIONS))
     vacc = np.complex(0)
     for integration_num in range(INTEGRATIONS):
-        if integration_num % 1000 == 0:
+        if integration_num % 100000 == 0:
             logger.info(integration_num)
         siggen.fetch_crosses()
         vacc += siggen.frequency_correlations[(0,1)].bin_at_freq(FREQUENCY)
@@ -20,7 +20,7 @@ def run_single_sim(siggen):
     return accumulated_phase
 
 if __name__ == '__main__':
-    INTEGRATIONS = 4000
+    INTEGRATIONS = 400000
     FREQUENCY = 0.2002
 
     # setup root logger. Shouldn't be used much but will catch unexpected messages
@@ -52,7 +52,8 @@ if __name__ == '__main__':
                              phase_shifts=np.array((0, 1.234)),
                              amplitude_scales=np.ones(2))
 
-    for snr in [0.1, 0.01]:
+    fig_rmserr, ax_rmserr = plt.subplots()
+    for snr in [0.1, 0.03, 0.01, 0.003, 0.001]:
         siggen = SignalGenerator(tone_freq = FREQUENCY, 
                                  num_channels = 2, 
                                  snr = snr,
@@ -60,7 +61,7 @@ if __name__ == '__main__':
                                  amplitude_scales=np.ones(2))
         logging.info("SNR: {}".format(snr))
         results = []
-        for run in range(3):
+        for run in range(20):
             logging.info("Run: {}".format(run))
             result = run_single_sim(siggen)
             result = result[::-1]
@@ -68,11 +69,11 @@ if __name__ == '__main__':
             result = result[::-1]
             results.append(result)
         fig, ax0 = plt.subplots()
-        for result in results[0:3]:
+        for result in results[0:4]:
             ax0.plot(result)
         ax0.set_ylabel("Phase output (radians)")
-        fig.gca().set_title("Integrations vs phase output for SNR = {snr}".format(snr = snr))
-        fig.gca().set_xlabel("Integration number")
+        ax0.set_title("Integrations vs correlator phase output for SNR = {snr}".format(snr = snr))
+        ax0.set_xlabel("Integration number")
         plt.axhline(1.234)
         errors = [result - 1.234 for result in results]
         errors = [((e + np.pi) % (2*np.pi)) - np.pi for e in errors]
@@ -82,7 +83,9 @@ if __name__ == '__main__':
             sum_squared += error_squared
         sum_squared /= len(results)
         rms = np.sqrt(sum_squared)
-        ax1 = ax0.twinx()
-        ax1.plot(rms, 'black')
-        ax1.set_ylabel("RMS Error (radians)")
+        ax_rmserr.plot(rms, label="{snr}".format(snr = snr))
+    ax_rmserr.set_ylabel("RMS Error (radians)")
+    ax_rmserr.set_title("Phase RMS error for various SNR")
+    ax_rmserr.set_xlabel("Integration number")
+    ax_rmserr.legend()
     plt.show()
