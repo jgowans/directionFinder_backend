@@ -102,16 +102,20 @@ class SignalGenerator:
         return signals
 
     def generate_tone(self, channel):
-        x = np.linspace(start = self.phase_shifts[channel],
-                        stop = self.phase_shifts[channel] + (2*np.pi * self.tone_freq * self.samples),
-                        num = self.samples,
-                        endpoint=False)
+        #x = np.linspace(start = self.phase_shifts[channel],
+        #                stop = self.phase_shifts[channel] + (2*np.pi * self.tone_freq * self.samples),
+        #                num = self.samples,
+        #                endpoint=False)
+        x = np.arange(0, self.samples, 1)
+        tone =  np.sin((2*np.pi * self.tone_freq * x) + self.phase_shifts[channel])
         # For a sine wave: P = A^2 / 2. This must be divided by N as the FFT acts
         # to multiply the power of a bin by N. 
         # We want the power in the FFT bin to be P.
         power = ((self.noise_stddev**2) * self.snr) / self.samples
+        # but multiplied by 2 because the power is split into 2 bins: positive freq and negative freq
+        power = power * 2
         amplitude = np.sqrt(2*power)
-        return (self.amplitude_scales[channel] * amplitude) * np.sin(x)
+        return (self.amplitude_scales[channel] * amplitude) * tone
 
     def generate_noise(self):
         return np.random.normal(0, self.noise_stddev, self.samples)
