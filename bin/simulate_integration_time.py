@@ -61,7 +61,7 @@ if __name__ == '__main__':
                                  amplitude_scales=np.ones(2))
         logging.info("SNR: {}".format(snr))
         results = []
-        for run in range(20):
+        for run in range(30):
             logging.info("Run: {}".format(run))
             result = run_single_sim(siggen)
             result = result[::-1]
@@ -69,12 +69,12 @@ if __name__ == '__main__':
             result = result[::-1]
             results.append(result)
         fig, ax0 = plt.subplots()
-        for result in results[0:4]:
-            ax0.plot(result)
+        for result in results[0:5]:
+            ax0.loglog(np.abs(result - 1.234))  # error rather than absolute
         ax0.set_ylabel("Phase output (radians)")
         ax0.set_title("Integrations vs correlator phase output for SNR = {snr}".format(snr = snr))
         ax0.set_xlabel("Integration number")
-        plt.axhline(1.234)
+        plt.axhline(0)
         errors = [result - 1.234 for result in results]
         errors = [((e + np.pi) % (2*np.pi)) - np.pi for e in errors]
         errors_squared = [np.square(e) for e in errors]
@@ -83,9 +83,9 @@ if __name__ == '__main__':
             sum_squared += error_squared
         sum_squared /= len(results)
         rms = np.sqrt(sum_squared)
-        ax_rmserr.plot(rms, label="{snr}".format(snr = snr))
+        ax_rmserr.loglog(rms, label="{snr}".format(snr = snr))
     ax_rmserr.set_ylabel("RMS Error (radians)")
     ax_rmserr.set_title("Phase RMS error for various SNR")
     ax_rmserr.set_xlabel("Integration number")
-    ax_rmserr.legend()
+    ax_rmserr.legend(loc='lower left')
     plt.show()
