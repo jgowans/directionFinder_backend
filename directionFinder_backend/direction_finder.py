@@ -15,29 +15,45 @@ class DirectionFinder:
         self.logger = logger
         self.correlator = correlator
         self.array = array
+        self.sampled_angles = np.linspace(-np.pi, np.pi, 1000)
+        self.last_angle = self.sampled_angles[0]
+        self.manifolds = {}
         self.set_frequency(frequency)
-        self.generate_manifold()
 
     def set_frequency(self, frequency):
         # assert that frequency is valid as per correlator specs here
-        self._frequency = frequency
+        self.frequency = frequency
+        self.generate_manifold()
+        self.manifold = self.manifolds[self.frequency]
 
     def generate_manifold(self):
-        self.manifold = {}
-        for angle in np.linspace(0, np.pi*2, 1000):
-            manifold[angle] = self.array.each_pair_phase_difference_at_angle(angle, self.frequency)
+        if self.frequency not in self.manifolds:
+            manifold = {}
+            for angle in self.sampled_angles:
+                manifold[angle] = self.array.each_pair_phase_difference_at_angle(angle, self.frequency)
+            self.manifolds[self.frequency] = manifold
         # TODO: later, run this through a Calibration class which applies offsets
         # to the phase values such that the simulated phase mirrors the actual phase
         # differences. 
 
     def find_closest_point(self, input_vector):
-        closest_angle = self.manifold.keys()[0] # get a 'random' angle
-        cosest_distance = self.distance_between_vectors(input_vector, self.manifold[closest_angle])  
-        for angle, manifold_vector in self.manifold.items():
+        closest_angle = self.last_angle - np.pi/6 # go back a bit from last time
+        if closest_angle < self.sampled_angles[0]:
+            closest_angle = self.sampled_angles[-int((self.sampled_angles[0] - closest_angle) / (self.sampled_angles[1] - self.sampled_angles[0]))]
+        last_idx = np.searchsorted(self.sampled_angles, closest_angle)
+        closest_angle = self.sampled_angles[last_idx]
+        #closest_angle = self.manifold.keys()[0]
+        closest_distance = self.distance_between_vectors(input_vector, self.manifold[closest_angle])  
+        for angle_idx in range(last_idx,
+                               last_idx + len(self.sampled_angles)):
+            angle_idx = angle_idx % len(self.sampled_angles)
+            angle = self.sampled_angles[angle_idx]
+            manifold_vector = self.manifold[angle]
             new_distance = self.distance_between_vectors(input_vector, manifold_vector) 
-            if new_distane < closest_distance:
+            if new_distance < closest_distance:
                 closest_distance = new_distance
                 closest_angle = angle
+        self.last_angle = closest_angle
         return closest_angle
 
     def distance_between_vectors(self, vec0, vec1):
@@ -47,8 +63,10 @@ class DirectionFinder:
         )
         return np.linalg.norm(phase_differences)
 
-    def direction_find(self):
+    def df_strongest_signal(self, f_start, f_stop):
         self.correlator.fetch_crosses()
-        #input_vector = self.correlator.
-        # get data from correlator (sit in loop until data available)
-        # iterate through manifold and find nearest point
+        f = self.correlator.frequency_correlations[(0,1)].strongest_freq_in_range(f_start, f_stop)
+        self.set_frequency(f)
+
+    def df_frequency(self):
+        pass
