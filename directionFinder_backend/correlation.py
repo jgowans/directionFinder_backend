@@ -100,6 +100,14 @@ class Correlation:
         bin_number = np.argmax(np.abs(self.signal[1:])) + 1
         return self.frequency_bins[bin_number]
 
+    def strongest_frequency_in_range(self, f_start, f_stop):
+        idx_start = np.searchsorted(self.frequency_bins, f_start)
+        idx_stop= np.searchsorted(self.frequency_bins, f_stop)
+        subsig = self.signal[idx_start:idx_stop]
+        offset_to_max = np.argmax(np.abs(subsig))
+        frequency = self.frequency_bins[idx_start + offset_to_max]
+        return frequency
+
     def phase_at_freq(self, f):
         """ Note: this formula may need fixing!! Check against actual data
         """
