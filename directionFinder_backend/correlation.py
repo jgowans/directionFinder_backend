@@ -47,9 +47,8 @@ class Correlation:
         for idx, f in enumerate(self.frequency_bins):
             # find index in of the frequency in frequencies which is losest to f
             frequencies_idx = np.argmin(np.abs(frequencies - f))
-            print(frequencies_idx)
             self.calibration_phase_offsets[idx] = phases[frequencies_idx]
-        self.logger.info("Applied calibration factors based on each frequency bin")
+        self.logger.info("Added calibration factors based on each frequency bin")
 
     def add_cable_length_calibration(self, length_a, velocity_factor_a, length_b, velocity_factor_b):
         """ 'a' values are for comb[0]. 'b' values are for comb[1]
@@ -69,7 +68,7 @@ class Correlation:
             # this will produce a positive number if As length is longer than Bs
             phase = 2*np.pi * (t_a - t_b) * f
             self.calibration_cable_length_offsets[idx] = phase
-        self.logger.info("Applied calibration factors base on cable length")
+        self.logger.info("Added calibration factors base on cable length")
 
     def arm(self):
         self.snapshot0.arm()
@@ -79,10 +78,10 @@ class Correlation:
         if self.calibration_phase_offsets != None:
             offsets = np.exp(1j*self.calibration_phase_offsets)
             self.signal = self.signal * np.conj(offsets)
-            self.logger.warn("Applied: {offsets}".format(offsets = offsets))
         if self.calibration_cable_length_offsets != None:
             offsets = np.exp(1j*self.calibration_cable_length_offsets)
             self.signal = self.signal * offsets
+        self.logger.debug("Applied calibration factors")
 
     def fetch_signal(self):
         self.snapshot0.fetch_signal()

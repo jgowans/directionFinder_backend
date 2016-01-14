@@ -42,6 +42,8 @@ if __name__ == '__main__':
     array = AntennaArray.mk_from_config(args.array_geometry_file)
     correlator = Correlator(logger = logger.getChild('correlator'))
     correlator.set_accumulation_len(args.acc_len)
+    correlator.add_cable_length_calibrations('/home/jgowans/workspace/directionFinder_backend/config/cable_length_calibration_actual_array.json')
+    correlator.add_frequency_bin_calibrations('/home/jgowans/workspace/directionFinder_backend/config/frequency_domain_calibration_through_chain.json')
     df = DirectionFinder(correlator, array, args.f_start, logger.getChild('df'))
 
     if args.impulse == True:

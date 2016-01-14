@@ -158,7 +158,7 @@ class Correlator:
         full_dir = "{base}/{sub}/".format(base = path, sub = time.time())
         os.mkdir(full_dir)
         for chan in range(self.num_channels):
-            filename = "{path}/{a}x{b}".format(path = full_dir, a = comb[0], b = comb[1])
+            filename = "{path}/{chan}".format(path = full_dir, chan = chan)
             sig = self.time_domain_signals[chan]
             np.save(filename, sig)
         self.logger.debug("Saved time domain raw to {d}".format(d = full_dir))
@@ -250,7 +250,6 @@ class Correlator:
                                             a_time_upped[-1] - b_time_upped[-1],
                                             len(correlation),
                                             endpoint=True)
-            print(len(correlation))
             return (correlation, correlation_time)
 
     def arm_combination(self, combination):
@@ -312,7 +311,7 @@ class Correlator:
             offsets = json.load(f)
         frequencies = offsets['axis']
         for a, b in self.cross_combinations:
-            self.frequency_correlations[(a, b)].apply_frequency_bin_calibration(
+            self.frequency_correlations[(a, b)].add_frequency_bin_calibration(
                 frequencies = frequencies,
                 phases = offsets["{a}{b}".format(a = a, b = b)])
 
@@ -334,7 +333,7 @@ class Correlator:
             length_b = cables[str(b)]['length']
             velocity_factor_b = cables[str(b)]['velocity factor']
             # For the frequency domain:
-            self.frequency_correlations[(a, b)].apply_cable_length_calibration(
+            self.frequency_correlations[(a, b)].add_cable_length_calibration(
                 length_a = length_a,
                 velocity_factor_a = velocity_factor_a,
                 length_b = length_b,
