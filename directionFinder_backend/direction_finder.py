@@ -17,18 +17,25 @@ class DirectionFinder:
         self.array = array
         self.sampled_angles = np.linspace(-np.pi, np.pi, 1000)
         self.last_angle = self.sampled_angles[0]
-        self.manifolds = {}
+        self.frequency_manifolds = {}
         self.set_frequency(frequency)
 
     def set_frequency(self, frequency):
         # assert that frequency is valid as per correlator specs here
         self.frequency = frequency
-        if self.frequency not in self.manifolds:
+        if self.frequency not in self.frequency_manifolds:
             manifold = {}
             for angle in self.sampled_angles:
                 manifold[angle] = self.array.each_pair_phase_difference_at_angle(angle, self.frequency)
-            self.manifolds[self.frequency] = manifold
-        self.manifold = self.manifolds[self.frequency]
+            self.frequency_manifolds[self.frequency] = manifold
+        self.manifold = self.frequency_manifolds[self.frequency]
+
+    def set_time(self):
+        """ Goes into time mode
+        """
+        self.manifold = {}
+        for angle in self.sampled_angles:
+            manifold[angle] = self.array.each_pair_time_difference_at_angle(angle)
 
     def find_closest_point(self, input_vector):
         closest_angle = self.last_angle - np.pi/6 # go back a bit from last time
