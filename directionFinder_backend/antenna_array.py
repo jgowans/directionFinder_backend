@@ -2,6 +2,7 @@ import numpy as np
 from antenna import Antenna
 import itertools
 import json
+import scipy.constants
 
 class AntennaArray:
     def __init__(self, antennas):
@@ -68,6 +69,19 @@ class AntennaArray:
             )
         return phases_of_pairs
 
+    def each_pair_time_difference_at_angle(self, phi, f):
+        times_of_pairs = np.array([])
+        for ant0, ant1 in self.each_pair():
+            phases_of_pairs = np.append(
+                times_of_pairs,
+                self.time_difference_between_two_antennas_at_angle(
+                    ant0,
+                    ant1,
+                    phi
+                )
+            )
+        return times_of_pairs
+
     def phase_difference_between_two_antennas_at_angle(self, antA, antB, phi, f):
         """Implements antB.phase - antA.phase"""
         antA_phase = antA.phase_at_angle(phi, f)
@@ -77,3 +91,9 @@ class AntennaArray:
         normalised_phase = np.arctan2(np.sin(delta_phase), np.cos(delta_phase))
         return normalised_phase
 
+    def time_difference_between_two_antennas_at_angle(self, antA, antB, phi):
+        antA_distance = antA.rotated_distance(phi)
+        antB_distance = antB.rotated_distance(phi)
+        delta_distance = antA_distance - antB_distance
+        delta_time = delta_distance / scipy.constants.c
+        return delta_time
