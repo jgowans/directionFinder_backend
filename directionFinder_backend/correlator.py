@@ -82,7 +82,7 @@ class Correlator:
 
     def set_impulse_setpoint(self, level):
         self.fpga.write_int('setppoint', level)
-        self.logger.info("Impulse filter length changed to: {}".format(level))
+        self.logger.info("Impulse detection setpoint changed to: {}".format(level))
 
     def get_current_impulse_level(self):
         level = self.fpga.read_uint('current_impulse_level')
@@ -102,10 +102,16 @@ class Correlator:
         new_length = (4 * self.num_channels) * np.floor(len(sig) / (4 * self.num_channels))
         sig = sig[0:new_length]
         self.time_domain_signals = np.ndarray((self.num_channels, len(sig)/self.num_channels), 
-                                              dtype = self.time_domain_snap.dtype)
+                                              dtype = np.float64)
         sig = sig.reshape(len(sig)/self.num_channels, self.num_channels)
         for chan in range(self.num_channels):
-            self.time_domain_signals[chan] = sig[chan::self.num_channels].flatten()
+            self.time_domain_signals[chan] = sig[chan::self.num_channels].flatten().astype(np.float64)
+            # remove DC offset
+            mean = np.mean(self.time_domain_signals[chan])
+            self.time_domain_signals[chan] -= mean
+            self.logger.info("After: DC offset for {chan} = {offset}".format(
+                chan = chan, 
+                offset = np.mean(self.time_domain_signals[chan])))
 
 
     def fetch_crosses(self):
@@ -165,6 +171,12 @@ class Correlator:
         for baseline in self.cross_combinations:
             self.time_domain_cross_correlations_peaks[baseline] = \
                 self.time_domain_correlations_times[baseline][np.argmax(self.time_domain_correlations_values[baseline])]
+
+    def visibilities_from_time(self):
+        visibilities = np.ndarray(len(self.cross_combinations))
+        for idx, baseline in enumerate(self.cross_combinations):
+            visibilities[idx] = self.time_domain_cross_correlations_peaks[baseline]
+        return visibilities
 
     def do_time_domain_cross_correlations_cross_first(self):
         self.time_domain_correlations_values = {}
