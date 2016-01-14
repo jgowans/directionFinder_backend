@@ -1,5 +1,49 @@
 #!/usr/bin/env python
 
-import directionFinder_backend
+from directionFinder_backend.antenna_array import AntennaArray
+from directionFinder_backend.correlator import Correlator
+from directionFinder_backend.direction_finder import DirectionFinder
+import logging
+from colorlog import ColoredFormatter
+import time
+import argparse
+import os
 
-print("I'm finding directions of stuff!")
+if __name__ == '__main__':
+    # setup root logger. Shouldn't be used much but will catch unexpected messages
+    colored_formatter = ColoredFormatter("%(log_color)s%(asctime)s:%(levelname)s:%(name)s:%(message)s")
+    handler = logging.StreamHandler()
+    handler.setFormatter(colored_formatter)
+    handler.setLevel(logging.DEBUG)
+
+    root = logging.getLogger()
+    root.addHandler(handler)
+    root.setLevel(logging.INFO)
+
+    logger = logging.getLogger('main')
+    logger.propagate = False
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+
+    parser = argparse.ArgumentParser(description = "Run RMS error simulations")
+    parser.add_argument('--f_start', default=220e6, type=float)
+    parser.add_argument('--f_stop', default=261e6, type=float)
+    parser.add_argument('--array_geometry_file', default=None)
+    parser.add_argument('--impulse', type=bool, default=False)
+    parser.add_argument('--acc_len', type=int, default=40000)
+    parser.add_argument('--comment', type=str)
+    args = parser.parse_args()
+
+    df_raw_dir = '/home/jgowans/Documents/df_raw/{c}/'.format(c = args.comment)
+    if not os.path.exists(df_raw_dir):
+        os.mkdir(df_raw_dir)
+
+    array = AntennaArray.mk_from_config(args.array_geometry_file)
+    correlator = Correlator(logger = logger.getChild('correlator'))
+    correlator.set_accumulation_len(args.acc_len)
+    df = DirectionFinder(correlator, array, args.f_start, logger.getChild('df'))
+
+    while True:
+        df.df_strongest_signal(args.f_start, args.f_stop)
+        correlator.save_frequency_correlations(df_raw_dir)
+

@@ -23,18 +23,12 @@ class DirectionFinder:
     def set_frequency(self, frequency):
         # assert that frequency is valid as per correlator specs here
         self.frequency = frequency
-        self.generate_manifold()
-        self.manifold = self.manifolds[self.frequency]
-
-    def generate_manifold(self):
         if self.frequency not in self.manifolds:
             manifold = {}
             for angle in self.sampled_angles:
                 manifold[angle] = self.array.each_pair_phase_difference_at_angle(angle, self.frequency)
             self.manifolds[self.frequency] = manifold
-        # TODO: later, run this through a Calibration class which applies offsets
-        # to the phase values such that the simulated phase mirrors the actual phase
-        # differences. 
+        self.manifold = self.manifolds[self.frequency]
 
     def find_closest_point(self, input_vector):
         closest_angle = self.last_angle - np.pi/6 # go back a bit from last time
@@ -65,8 +59,12 @@ class DirectionFinder:
 
     def df_strongest_signal(self, f_start, f_stop):
         self.correlator.fetch_crosses()
-        f = self.correlator.frequency_correlations[(0,1)].strongest_freq_in_range(f_start, f_stop)
+        f = self.correlator.frequency_correlations[(0,1)].strongest_frequency_in_range(f_start, f_stop)
+        self.logger.info("Strongest signal in 0x1 correlation: {f} MHz.".format(f = f/1e6))
         self.set_frequency(f)
+        visibilities = self.correlator.visibilities_at_frequency(f)
+        aoa = self.find_closest_point(visibilities)
+        self.logger.info("AoA: {aoa}".format(aoa = aoa))
 
     def df_frequency(self):
         pass
