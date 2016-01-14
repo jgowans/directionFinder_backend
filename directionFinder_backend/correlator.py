@@ -13,6 +13,7 @@ import numpy as np
 import scipy.signal, scipy.constants
 import time
 import json
+import os
 
 
 class Correlator:
@@ -132,6 +133,29 @@ class Correlator:
         for comb in combinations:
             self.frequency_correlations[comb].fetch_signal()
         self.get_overflow_state()
+
+    def visibilities_at_frequency(self, f):
+        visibilities = np.ndarray(len(self.cross_combinations))
+        for idx, comb in enumerate(self.cross_combinations):
+            visibilities[idx] = self.frequency_correlations[comb].phase_at_freq(f)
+        return visibilities
+
+    def save_frequency_correlations(self, path):
+        full_dir = "{base}/{sub}/".format(base = path, sub = time.time())
+        os.mkdir(full_dir)
+        for comb in self.cross_combinations:
+            filename = "{path}/{a}x{b}".format(path = full_dir, a = comb[0], b = comb[1])
+            np.save(filename, self.frequency_correlations[comb].signal)
+        self.logger.debug("Saved frequency combinations to {d}".format(d = full_dir))
+
+    def save_time_raw(self, path):
+        full_dir = "{base}/{sub}/".format(base = path, sub = time.time())
+        os.mkdir(full_dir)
+        for chan in range(self.num_channels):
+            filename = "{path}/{a}x{b}".format(path = full_dir, a = comb[0], b = comb[1])
+            sig = self.time_domain_signals[chan]
+            np.save(filename, sig)
+        self.logger.debug("Saved time domain raw to {d}".format(d = full_dir))
 
     def do_time_domain_cross_correlation(self):
         # TODO: initiaise factor at initialisation from config.
