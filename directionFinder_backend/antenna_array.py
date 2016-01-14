@@ -36,12 +36,6 @@ class AntennaArray:
             antennas.append(Antenna(d,0).rotated(el * arc_length_per_element))
         return cls(antennas)
 
-    def phases_at_angle(self, phi):
-        phases_of_elements = np.array([])
-        for antenna in self:
-            phases_of_elements = np.append(phases_of_elements, antenna.phase_at_angle(phi))
-        return phases_of_elements
-
     def __iter__(self):
         self.current = 0
         return self
@@ -78,7 +72,7 @@ class AntennaArray:
         """Implements antB.phase - antA.phase"""
         antA_phase = antA.phase_at_angle(phi, f)
         antB_phase = antB.phase_at_angle(phi, f)
-        delta_phase = antB_phase - antA_phase
+        delta_phase = antA_phase - antB_phase
         # force phase to range from -pi to pi. I sort of know how this works...
         normalised_phase = np.arctan2(np.sin(delta_phase), np.cos(delta_phase))
         return normalised_phase
