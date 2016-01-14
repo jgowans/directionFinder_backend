@@ -75,3 +75,10 @@ class DirectionFinder:
 
     def df_frequency(self):
         pass
+
+    def df_impulse(self):
+        if self.correlator.impulse_fetch() == True:
+            self.correlator.do_time_domain_cross_correlation()
+            visibilities = self.correlator.visibilities_from_time()
+            aoa = self.find_closest_point(visibilities)
+            self.logger.info("AoA: {aoa}".format(aoa = aoa))

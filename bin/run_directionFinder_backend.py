@@ -30,6 +30,7 @@ if __name__ == '__main__':
     parser.add_argument('--f_stop', default=261e6, type=float)
     parser.add_argument('--array_geometry_file', default=None)
     parser.add_argument('--impulse', type=bool, default=False)
+    parser.add_argument('--impulse_setpoint', type=int)
     parser.add_argument('--acc_len', type=int, default=40000)
     parser.add_argument('--comment', type=str)
     args = parser.parse_args()
@@ -43,7 +44,19 @@ if __name__ == '__main__':
     correlator.set_accumulation_len(args.acc_len)
     df = DirectionFinder(correlator, array, args.f_start, logger.getChild('df'))
 
+    if args.impulse == True:
+        df.set_time()  # go into time mode
+        # 100 impulse filter len = 0.5 us
+        correlator.set_impulse_filter_len(100)
+        correlator.set_impulse_setpoint(args.impulse_setpoint)
+        correlator.re_sync()
+        time.sleep(0.1)
+        correlator.impulse_arm()
+
     while True:
-        df.df_strongest_signal(args.f_start, args.f_stop)
-        correlator.save_frequency_correlations(df_raw_dir)
+        if args.impulse == True:
+            df.df_impulse()
+        else:
+            df.df_strongest_signal(args.f_start, args.f_stop)
+            correlator.save_frequency_correlations(df_raw_dir)
 
