@@ -41,7 +41,7 @@ class Correlation:
             num = len(self.signal),
             endpoint = False)
 
-    def apply_frequency_bin_calibration(self, frequencies, phases):
+    def add_frequency_bin_calibration(self, frequencies, phases):
         assert(len(frequencies) == len(phases))
         self.calibration_phase_offsets = np.ndarray(len(self.frequency_bins))
         for idx, f in enumerate(self.frequency_bins):
@@ -51,7 +51,7 @@ class Correlation:
             self.calibration_phase_offsets[idx] = phases[frequencies_idx]
         self.logger.info("Applied calibration factors based on each frequency bin")
 
-    def apply_cable_length_calibration(self, length_a, velocity_factor_a, length_b, velocity_factor_b):
+    def add_cable_length_calibration(self, length_a, velocity_factor_a, length_b, velocity_factor_b):
         """ 'a' values are for comb[0]. 'b' values are for comb[1]
         TODO: remove what follows in docstring
         A positive number will produce a positive phase correlation factor. 
@@ -75,7 +75,7 @@ class Correlation:
         self.snapshot0.arm()
         self.snapshot1.arm()
 
-    def apply_calibrations(self):
+    def apply_frequency_domain_calibrations(self):
         if self.calibration_phase_offsets != None:
             offsets = np.exp(1j*self.calibration_phase_offsets)
             self.signal = self.signal * np.conj(offsets)
@@ -89,7 +89,6 @@ class Correlation:
         self.snapshot1.fetch_signal()
         # F:  index the elements in column-major order, with the first index changing fastest
         self.signal = np.ravel( (self.snapshot0.signal, self.snapshot1.signal), order='F')
-        self.apply_calibrations()
 
     def strongest_frequency(self):
         """ Returns the frequency in Hz which has the strongest signal.

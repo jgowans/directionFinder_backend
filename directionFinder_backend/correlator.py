@@ -154,7 +154,7 @@ class Correlator:
             np.save(filename, self.frequency_correlations[comb].signal)
         self.logger.debug("Saved frequency combinations to {d}".format(d = full_dir))
 
-    def save_time_raw(self, path):
+    def save_time_domain_snapshots(self, path):
         full_dir = "{base}/{sub}/".format(base = path, sub = time.time())
         os.mkdir(full_dir)
         for chan in range(self.num_channels):
@@ -187,22 +187,23 @@ class Correlator:
             # to float64.
             # if they stayed as int8 the correlation would fail miserably.
             # investivate time impact of converting to float64 vs int32 vs int64
-            a = np.concatenate(
-                (np.zeros(self.time_domain_padding),
-                 self.time_domain_signals[a_idx][0:self.subsignal_length_max],
-                 np.zeros(self.time_domain_padding)))
-            a_time = np.linspace(-(self.time_domain_padding/self.fs), 
-                                 (len(a)-self.time_domain_padding)/self.fs, 
+            a = self.time_domain_signals[a_idx][0:self.subsignal_length_max]
+            a_time = np.linspace(0,
+                                 len(a)/self.fs,
                                  len(a),
                                  endpoint=False)
-            b = self.time_domain_signals[b_idx][0:self.subsignal_length_max]
-            b_time = np.linspace(0,
-                                 len(b)/self.fs,
+            b = np.concatenate(
+                (np.zeros(self.time_domain_padding),
+                 self.time_domain_signals[b_idx][0:self.subsignal_length_max],
+                 np.zeros(self.time_domain_padding)))
+            b_time = np.linspace(-(self.time_domain_padding/self.fs), 
+                                 (len(b)-self.time_domain_padding)/self.fs, 
                                  len(b),
                                  endpoint=False)
-            correlation = np.correlate(a, b, mode='valid')
-            correlation_time = np.linspace(a_time[0] - b_time[0],
-                                            a_time[-1] - b_time[-1],
+            # this corresponds to sliding a over b. Ie: b gets shifted each tick
+            correlation = np.correlate(b, a, mode='valid')
+            correlation_time = np.linspace(b_time[0] - a_time[0],
+                                            b_time[-1] - a_time[-1],
                                             len(correlation),
                                             endpoint=True)
             correlation_upped, correlation_time_upped = scipy.signal.resample(
@@ -224,6 +225,7 @@ class Correlator:
             # the 't' axis. Or just to 't'? 
 
     def do_time_domain_cross_correlation_resample_first(self):
+        raise Exception("Need to swap A and B as done above")
         self.time_domain_correlations = []
         # fetch here maybe?
         for (a_idx, b_idx) in self.cross_combinations:
@@ -297,7 +299,7 @@ class Correlator:
         return overflows
 
 
-    def apply_time_domain_calibration(self, filename):
+    def add_time_domain_calibration(self, filename):
         self.time_domain_calibration_values = {}
         with open(filename) as f:
             offsets = json.load(f)
@@ -305,7 +307,7 @@ class Correlator:
             comb_str = "{a}x{b}".format(a = a, b = b)
             self.time_domain_calibration_values[(a, b)] = offsets[comb_str]
 
-    def apply_frequency_bin_calibrations(self, filename):
+    def add_frequency_bin_calibrations(self, filename):
         with open(filename) as f:
             offsets = json.load(f)
         frequencies = offsets['axis']
@@ -314,7 +316,7 @@ class Correlator:
                 frequencies = frequencies,
                 phases = offsets["{a}{b}".format(a = a, b = b)])
 
-    def apply_cable_length_calibrations(self, filename):
+    def add_cable_length_calibrations(self, filename):
         """ Filename should be a json file with cable lengths
         for each antenna and velocity factors
         {
@@ -344,3 +346,7 @@ class Correlator:
             # a delayed from b by a positive amount will mean that the correlation
             # peak will be positive. Subtract this to compensate.
             self.time_domain_calibration_cable_values[(a, b)] = t_a - t_b
+
+    def apply_frequency_domain_calibrations(self):
+        for a, b in self.cross_combinations:
+            self.frequency_correlations[(a, b)].apply_frequency_domain_calibrations()

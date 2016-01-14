@@ -35,7 +35,7 @@ class DirectionFinder:
         """
         self.manifold = {}
         for angle in self.sampled_angles:
-            manifold[angle] = self.array.each_pair_time_difference_at_angle(angle)
+            self.manifold[angle] = self.array.each_pair_time_difference_at_angle(angle)
 
     def find_closest_point(self, input_vector):
         closest_angle = self.last_angle - np.pi/6 # go back a bit from last time
@@ -64,8 +64,10 @@ class DirectionFinder:
         )
         return np.linalg.norm(phase_differences)
 
-    def df_strongest_signal(self, f_start, f_stop):
+    def fetch_frequency_crosses(self):
         self.correlator.fetch_crosses()
+
+    def df_strongest_signal(self, f_start, f_stop):
         f = self.correlator.frequency_correlations[(0,1)].strongest_frequency_in_range(f_start, f_stop)
         self.logger.info("Strongest signal in 0x1 correlation: {f} MHz.".format(f = f/1e6))
         self.set_frequency(f)
@@ -76,9 +78,11 @@ class DirectionFinder:
     def df_frequency(self):
         pass
 
+    def fetch_impulse(self):
+        return self.correlator.impulse_fetch()
+
     def df_impulse(self):
-        if self.correlator.impulse_fetch() == True:
-            self.correlator.do_time_domain_cross_correlation()
-            visibilities = self.correlator.visibilities_from_time()
-            aoa = self.find_closest_point(visibilities)
-            self.logger.info("AoA: {aoa}".format(aoa = aoa))
+        self.correlator.do_time_domain_cross_correlation()
+        visibilities = self.correlator.visibilities_from_time()
+        aoa = self.find_closest_point(visibilities)
+        self.logger.info("AoA: {aoa}".format(aoa = aoa))

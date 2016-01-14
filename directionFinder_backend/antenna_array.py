@@ -69,10 +69,10 @@ class AntennaArray:
             )
         return phases_of_pairs
 
-    def each_pair_time_difference_at_angle(self, phi, f):
+    def each_pair_time_difference_at_angle(self, phi):
         times_of_pairs = np.array([])
         for ant0, ant1 in self.each_pair():
-            phases_of_pairs = np.append(
+            times_of_pairs = np.append(
                 times_of_pairs,
                 self.time_difference_between_two_antennas_at_angle(
                     ant0,
