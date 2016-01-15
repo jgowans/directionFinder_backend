@@ -60,10 +60,10 @@ if __name__ == '__main__':
             if df.fetch_impulse() == True:
                 correlator.save_time_domain_snapshots(df_raw_dir)
                 # not necessary to apply cal as it's done in the correlation routine
-                df.df_impulse()
+                df.df_impulse(df_raw_dir)
         else:
             df.fetch_frequency_crosses()
             correlator.save_frequency_correlations(df_raw_dir)
             correlator.apply_frequency_domain_calibrations()
-            df.df_strongest_signal(args.f_start, args.f_stop)
+            df.df_strongest_signal(args.f_start, args.f_stop, df_raw_dir)
 

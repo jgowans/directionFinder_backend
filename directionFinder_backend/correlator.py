@@ -17,7 +17,7 @@ import os
 
 
 class Correlator:
-    def __init__(self, ip_addr='localhost', num_channels=4, fs=800e6, logger=logging.getLogger(__name__)):
+    def __init__(self, ip_addr='192.168.14.30', num_channels=4, fs=800e6, logger=logging.getLogger(__name__)):
         """The interface to a ROACH cross correlator
 
         Keyword arguments:
@@ -112,6 +112,10 @@ class Correlator:
             self.logger.info("After: DC offset for {chan} = {offset}".format(
                 chan = chan, 
                 offset = np.mean(self.time_domain_signals[chan])))
+        self.time_domain_axis = np.linspace(0,
+                                            len(self.time_domain_signals[0])/self.fs,
+                                            len(self.time_domain_signals[0]),
+                                            endpoint = False)
 
 
     def fetch_crosses(self):
