@@ -214,7 +214,6 @@ class Correlator:
             if self.time_domain_calibration_values != None:
                 correlation_time_upped -= self.time_domain_calibration_values[(a_idx, b_idx)]
             if self.time_domain_calibration_cable_values != None:
-                #TODO : Should it be add or subtract??
                 correlation_time_upped -= self.time_domain_calibration_cable_values[(a_idx, b_idx)]
             self.time_domain_correlations_times[(a_idx, b_idx)] = correlation_time_upped
         # how much extra time we're appending each side
@@ -341,10 +340,10 @@ class Correlator:
             # For the time domain:
             t_a = length_a / (scipy.constants.c * velocity_factor_a)
             t_b = length_b / (scipy.constants.c * velocity_factor_b)
-            # this is how much a is delayed from b by as a result of the cable.
-            # a delayed from b by a positive amount will mean that the correlation
-            # peak will be positive. Subtract this to compensate.
-            self.time_domain_calibration_cable_values[(a, b)] = t_a - t_b
+            # this is how much b is delayed from a by as a result of the cable.
+            # b delayed from a by a positive amount will mean that the (a, b) correlation
+            # peak will be more positive than it should be. Subtract this to compensate.
+            self.time_domain_calibration_cable_values[(a, b)] = t_b - t_a
 
     def apply_frequency_domain_calibrations(self):
         for a, b in self.cross_combinations:
