@@ -68,15 +68,15 @@ class DirectionFinder:
     def fetch_frequency_crosses(self):
         self.correlator.fetch_crosses()
 
-    def df_strongest_signal(self, f_start, f_stop, log_dir):
+    def df_strongest_signal(self, f_start, f_stop, log_dir, t = time.time()):
         freq = self.correlator.frequency_correlations[(0,1)].strongest_frequency_in_range(f_start, f_stop)
-        self.logger.info("Strongest signal in 0x1 correlation: {f} MHz.".format(f = f/1e6))
+        self.logger.info("Strongest signal in 0x1 correlation: {f} MHz.".format(f = freq/1e6))
         self.set_frequency(freq)
         visibilities = self.correlator.visibilities_at_frequency(freq)
         aoa = self.find_closest_point(visibilities)
         self.logger.info("AoA: {aoa}".format(aoa = aoa))
         with open('{d}/results.txt'.format(d = log_dir), 'a') as f:
-            f.write("{t},{f},{aoa}\n".format(t = time.time(), f = freq, aoa = aoa))
+            f.write("{t},{f},{aoa}\n".format(t = t, f = freq, aoa = aoa))
 
     def df_frequency(self):
         pass
@@ -84,10 +84,10 @@ class DirectionFinder:
     def fetch_impulse(self):
         return self.correlator.impulse_fetch()
 
-    def df_impulse(self, log_dir):
+    def df_impulse(self, log_dir, t = time.time()):
         self.correlator.do_time_domain_cross_correlation()
         visibilities = self.correlator.visibilities_from_time()
         aoa = self.find_closest_point(visibilities)
         self.logger.info("AoA: {aoa}".format(aoa = aoa))
         with open('{d}/results.txt'.format(d = log_dir), 'a') as f:
-            f.write("{t},{aoa}\n".format(t = time.time(), aoa = aoa))
+            f.write("{t},{aoa}\n".format(t = t, aoa = aoa))
