@@ -37,30 +37,24 @@ if __name__ == '__main__':
 
     correlator = Correlator(logger = logger.getChild('correlator'))
     correlator.set_shift_schedule(0b00000000000)
-    correlator.set_accumulation_len(40000)
-    correlator.add_frequency_bin_calibrations('baseline.json')
+    correlator.set_accumulation_len(400000)
+    #correlator.apply_cable_length_calibrations('/home/jgowans/workspace/directionFinder_backend/config/cable_length_calibration.json')
+    #correlator.apply_frequency_bin_calibrations('/home/jgowans/workspace/directionFinder_backend/config/frequency_domain_calibration_through_chain.json')
+    #correlator.add_frequency_bin_calibrations('/home/jgowans/workspace/directionFinder_backend/config/frequency_domain_calibration_direct_in_phase.json')
     time.sleep(1)
     correlator.re_sync()
     
-    siggen = SCPI(host='localhost')
-
     offsets = {}
     offsets['axis'] = []
     for a, b in correlator.cross_combinations:
         offsets["{a}{b}".format(a = a, b = b)] = []
 
+    correlator.fetch_crosses()
+    #correlator.apply_frequency_domain_calibrations()
     for f in correlator.frequency_correlations[(0, 1)].frequency_bins:
-        siggen.setFrequency(f)
-        time.sleep(1)
-        correlator.fetch_crosses()
-        correlator.apply_frequency_domain_calibrations()
         for a, b in correlator.cross_combinations:
-            strongest_frequency = correlator.frequency_correlations[(a, b)].strongest_frequency()
-            if f != strongest_frequency:
-                logger.warning("Expected frequency: {expected}, got: {got}".format(
-                    expected = f, got = strongest_frequency))
             offsets["{a}{b}".format(a = a, b = b)].append(
-                correlator.frequency_correlations[(a, b)].phase_at_freq(strongest_frequency))
+                correlator.frequency_correlations[(a, b)].phase_at_freq(f))
         offsets['axis'].append(f)
         
     plot_offsets(offsets, correlator)

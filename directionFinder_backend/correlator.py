@@ -17,7 +17,7 @@ import os
 
 
 class Correlator:
-    def __init__(self, ip_addr='192.168.14.30', num_channels=4, fs=800e6, logger=logging.getLogger(__name__)):
+    def __init__(self, ip_addr='localhost', num_channels=4, fs=800e6, logger=logging.getLogger(__name__)):
         """The interface to a ROACH cross correlator
 
         Keyword arguments:
